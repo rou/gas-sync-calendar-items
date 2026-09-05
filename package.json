@@ -1,0 +1,22 @@
+{
+  "name": "gas-sync-calendar-items",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Google Apps Script で 2 つの Workspace アカウントのカレンダー予定を双方向同期する",
+  "type": "module",
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "push": "npm run build && clasp push --force",
+    "open": "clasp open"
+  },
+  "devDependencies": {
+    "@google/clasp": "^3.4.1",
+    "@types/google-apps-script": "^1.0.83",
+    "esbuild": "^0.23.0",
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
+  }
+}
