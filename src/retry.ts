@@ -5,7 +5,9 @@ export interface RetryOptions {
   isRetryable?: (error: unknown) => boolean;
 }
 
-const RETRYABLE_RE = /rate ?limit|quota|backend ?error|internal ?error|timed? ?out|\b50[0234]\b|try again/i;
+// "Empty response" は GAS の Advanced Service が一時的に返す既知のエラー。再実行でほぼ通る
+const RETRYABLE_RE =
+  /rate ?limit|quota|backend ?error|internal ?error|timed? ?out|\b50[0234]\b|try again|empty ?response/i;
 
 export function isRetryableError(error: unknown): boolean {
   return RETRYABLE_RE.test(errorMessage(error));
