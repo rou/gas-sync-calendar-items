@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "push": "npm run build && clasp push --force",
-    "open": "clasp open"
+    "open": "clasp open-script"
   },
   "devDependencies": {
     "@google/clasp": "^3.4.1",
