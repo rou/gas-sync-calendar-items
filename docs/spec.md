@@ -334,7 +334,7 @@ function isDuplicateEvent(eventA, eventB) {
 | `recurrence` | コピー（§12） |
 | `transparency` | コピー |
 | `colorId` | コピー |
-| `visibility` | **`private` 固定**（現行踏襲） |
+| `visibility` | ソースの `eventType` が `DEFAULT_VISIBILITY_EVENT_TYPES` に含まれれば `default`、それ以外は `private`。既定は空なので、すべて `private`（現行踏襲） |
 | `reminders` | `useDefault: true` 固定。ソースの通知設定は持ち込まない |
 | `eventType` ＋ `outOfOfficeProperties` / `focusTimeProperties` | 試行し、失敗したら通常予定へフォールバック（§11） |
 
@@ -352,9 +352,19 @@ function isDuplicateEvent(eventA, eventB) {
 
 ### `visibility: private` の意味
 
-ミラーは非公開になるが、これが隠せるのは**詳細閲覧権限を持たない第三者**に対してだけ。相手ドメインの同僚には「予定あり」としか見えなくなる。
+非公開にしたミラーの中身を隠せるのは、**詳細閲覧権限を持たない第三者**に対してだけ。相手ドメインの同僚には「予定あり」としか見えなくなる。
 
 一方、相手アカウント自身は詳細閲覧権限を持っているので、ミラーの中身が見える。両アカウントは同一人物のものなので問題にならない。
+
+### 種別ごとに公開する（`DEFAULT_VISIBILITY_EVENT_TYPES`）
+
+不在予定まで非公開にすると、相手ドメインの同僚には「予定あり」としか見えず、不在だと伝わらない。`DEFAULT_VISIBILITY_EVENT_TYPES` に種別を並べると、その種別のミラーだけ `visibility` を `default` にする。`default` は書き込み先カレンダーの共有設定に従うので、空き時間だけを共有している相手には「予定あり」のまま見える。
+
+判定にはソース予定の `eventType` を使い、ミラー側の種別は見ない。不在のミラーは、書き込み先によって本来の `outOfOffice` になる場合と、通常予定に退避する場合がある（§11）。終日の不在は常に退避する。ミラー側の種別で判定すると、同期の向きや終日かどうかで公開・非公開が分かれてしまう。
+
+公開したミラーは、タイトル末尾の `(自動生成)` と説明欄も相手ドメインの同僚に見える。
+
+設定を変えると、ソースが更新されていなくても、次の実行で既存ミラーの `visibility` を書き換える。差分更新の判定で、`csSrcUpdated` に加えて `visibility` も比べているため。API は `default` のとき値を省略して返すので、省略されていれば `default` とみなして比べる。
 
 ---
 
@@ -494,6 +504,7 @@ Pass 1 のうち `recurringEventId` を持たないものを単発ミラーと�
 | `FALLBACK_PREFIX_OOO` | `🏖 ` | 不在のフォールバック時の目印 |
 | `FALLBACK_PREFIX_FOCUS` | `🎧 ` | サイレントモードのフォールバック時の目印 |
 | `APPEND_SOURCE_LINKS` | `true` | Meet URL と添付ファイル名を `description` 末尾に補記 |
+| `DEFAULT_VISIBILITY_EVENT_TYPES` | （空） | ミラーを `visibility: default` にするソースの種別。`default` / `outOfOffice` / `focusTime` を `;` か `,` で区切って並べる（§10） |
 | `DRY_RUN` | `false` | 書き込みせずログだけ出す |
 | `NOTIFY_EMAIL` | 実行アカウント | エラー通知先 |
 | `SYNC_CURSOR` | （自動管理） | カーソル継続実行の進捗。**手動で消せば初回同期をやり直せる** |

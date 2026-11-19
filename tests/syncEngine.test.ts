@@ -210,6 +210,49 @@ describe('runSync: 種別のフォールバック', () => {
   });
 });
 
+describe('runSync: visibility', () => {
+  const oooPublic = () => makeConfig({ defaultVisibilityEventTypes: new Set(['outOfOffice']) });
+
+  it('不在だけ default にする。退避先・終日・方向が違っても揃う', () => {
+    gw.insertShouldFail = (cal, body) =>
+      cal === SUB && body.eventType === 'outOfOffice' ? new Error('Invalid value for: eventType') : null;
+    gw.seed(MAIN, timed(1, 10, '休暇', { eventType: 'outOfOffice' }));
+    gw.seed(SUB, timed(2, 10, 'サブ休暇', { eventType: 'outOfOffice' }));
+    gw.seed(SUB, { summary: '終日休暇', eventType: 'outOfOffice', start: { date: '2026-09-08' }, end: { date: '2026-09-09' } });
+    gw.seed(MAIN, timed(3, 10, '打合せ'));
+
+    runSync(deps({ cfg: oooPublic() }));
+    const vis = (cal: string) =>
+      Object.fromEntries(mirrorsIn(cal).map((m) => [m.summary, m.visibility]));
+    // メイン→サブは退避（🏖 付きの通常予定）になるが、それでも default
+    expect(vis(SUB)).toEqual({ '🏖 休暇 (自動生成)': 'default', '打合せ (自動生成)': 'private' });
+    // サブ→メインは本来の種別と、終日による退避
+    expect(vis(MAIN)).toEqual({ 'サブ休暇 (自動生成)': 'default', '🏖 終日休暇 (自動生成)': 'default' });
+  });
+
+  it('設定を後から変えると既存ミラーを 1 回だけ patch し、以後は何もしない', () => {
+    gw.seed(SUB, timed(1, 10, '休暇', { eventType: 'outOfOffice' }));
+    gw.seed(SUB, timed(2, 10, '打合せ'));
+    runSync(deps());
+    expect(mirrorsIn(MAIN).map((m) => m.visibility)).toEqual(['private', 'private']);
+
+    const first = runSync(deps({ cfg: oooPublic() }));
+    expect(first.stats.created).toBe(0);
+    expect(first.stats.updated).toBe(1);
+    expect(mirrorsIn(MAIN).find((m) => m.summary === '休暇 (自動生成)')?.visibility).toBe('default');
+
+    for (let i = 0; i < 2; i++) {
+      const again = runSync(deps({ cfg: oooPublic() }));
+      expect(again.stats.created).toBe(0);
+      expect(again.stats.updated).toBe(0);
+    }
+
+    // 設定を外せば private に戻る
+    expect(runSync(deps()).stats.updated).toBe(1);
+    expect(mirrorsIn(MAIN).map((m) => m.visibility)).toEqual(['private', 'private']);
+  });
+});
+
 describe('runSync: 繰り返し予定', () => {
   it('親を RRULE ごとコピーし、例外と取り消しを回単位で追随する', () => {
     const parent = gw.seed(SUB, timed(1, 10, '定例', { recurrence: ['RRULE:FREQ=DAILY;COUNT=3'] }));

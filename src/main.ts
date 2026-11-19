@@ -99,6 +99,7 @@ export function showConfig(): void {
   const view: Record<keyof Config, unknown> = {
     ...d.cfg,
     excludeTitlePatterns: d.cfg.excludeTitlePatterns.map((re) => re.source),
+    defaultVisibilityEventTypes: [...d.cfg.defaultVisibilityEventTypes],
   };
   console.log(JSON.stringify(view, null, 2));
 }
