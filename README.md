@@ -276,4 +276,13 @@ Calendar API への呼び出しは `CalendarGateway` インターフェース越
 
 同期ロジックを変更したら、実機で「連続 2〜3 回実行して `created` が 0 のまま」を**必ず確認する**。ここが増え続けるならループ防止が壊れている。
 
+### Claude による PR レビュー
+
+GitHub Actions で 2 つのワークフローが動く。
+
+- [claude-code-review.yml](.github/workflows/claude-code-review.yml): PR の作成・push のたびに Claude が自動レビューする
+- [claude.yml](.github/workflows/claude.yml): PR や Issue のコメントで `@claude` と呼ぶと応答する
+
+認証はリポジトリシークレット `CLAUDE_CODE_OAUTH_TOKEN` を使う。レビューは [CLAUDE.md](CLAUDE.md) の制約も踏まえて行われる。
+
 コード構成と設計判断の根拠は [docs/spec.md](docs/spec.md)、作業時の制約は [CLAUDE.md](CLAUDE.md) を参照。
