@@ -1,4 +1,4 @@
-import type { PropertyStore } from './types';
+import type { EventType, PropertyStore } from './types';
 
 export const PROPERTY_KEYS = {
   subCalendarId: 'SUB_CALENDAR_ID',
@@ -10,6 +10,7 @@ export const PROPERTY_KEYS = {
   fallbackPrefixOoo: 'FALLBACK_PREFIX_OOO',
   fallbackPrefixFocus: 'FALLBACK_PREFIX_FOCUS',
   appendSourceLinks: 'APPEND_SOURCE_LINKS',
+  defaultVisibilityEventTypes: 'DEFAULT_VISIBILITY_EVENT_TYPES',
   dryRun: 'DRY_RUN',
   notifyEmail: 'NOTIFY_EMAIL',
   syncCursor: 'SYNC_CURSOR',
@@ -57,6 +58,8 @@ export interface Config {
   fallbackPrefixOoo: string;
   fallbackPrefixFocus: string;
   appendSourceLinks: boolean;
+  /** ソースの eventType がここに含まれるミラーは visibility を default にする。ほかは private。 */
+  defaultVisibilityEventTypes: ReadonlySet<EventType>;
   dryRun: boolean;
   notifyEmail: string;
 }
@@ -82,6 +85,7 @@ export function loadConfig(props: PropertyStore, mainCalendarId: string): Config
     fallbackPrefixOoo: props.get(PROPERTY_KEYS.fallbackPrefixOoo) ?? DEFAULTS.fallbackPrefixOoo,
     fallbackPrefixFocus: props.get(PROPERTY_KEYS.fallbackPrefixFocus) ?? DEFAULTS.fallbackPrefixFocus,
     appendSourceLinks: readBoolean(props, PROPERTY_KEYS.appendSourceLinks, DEFAULTS.appendSourceLinks),
+    defaultVisibilityEventTypes: readEventTypeSet(props, PROPERTY_KEYS.defaultVisibilityEventTypes),
     dryRun: readBoolean(props, PROPERTY_KEYS.dryRun, DEFAULTS.dryRun),
     notifyEmail: readString(props, PROPERTY_KEYS.notifyEmail, mainCalendarId),
   };
@@ -108,6 +112,29 @@ function readBoolean(props: PropertyStore, key: string, fallback: boolean): bool
   if (raw === 'true' || raw === '1' || raw === 'yes') return true;
   if (raw === 'false' || raw === '0' || raw === 'no') return false;
   throw new Error(`${key} は true / false で指定してください（現在値: ${raw}）`);
+}
+
+/** visibility を切り替えられる種別。同期対象の種別と同じ（filters.ts の COPYABLE_EVENT_TYPES）。 */
+const VISIBILITY_CONFIGURABLE_EVENT_TYPES: readonly EventType[] = ['default', 'outOfOffice', 'focusTime'];
+
+/**
+ * eventType の集合の読み出し。未設定・空文字なら空集合。区切りは `;` / `,` / 改行。
+ * 綴りを間違えると黙って private のままになるので、知らない値は起動時に弾く。
+ */
+function readEventTypeSet(props: PropertyStore, key: string): ReadonlySet<EventType> {
+  const raw = props.get(key) ?? '';
+  const values = raw
+    .split(/\r?\n|;|,/)
+    .map((v) => v.trim())
+    .filter((v) => v.length > 0);
+  for (const v of values) {
+    if (!(VISIBILITY_CONFIGURABLE_EVENT_TYPES as readonly string[]).includes(v)) {
+      throw new Error(
+        `${key} に使えない値があります: ${v}（使える値: ${VISIBILITY_CONFIGURABLE_EVENT_TYPES.join(' / ')}）`,
+      );
+    }
+  }
+  return new Set(values as EventType[]);
 }
 
 /**

@@ -1,6 +1,6 @@
 import type { CalEvent, CalendarGateway, Logger, PropertyStore } from './types';
 import { PROPERTY_KEYS, type Config } from './config';
-import { buildMirrorBody, isStatusEventType, mirrorFieldsEqual } from './mapping';
+import { buildMirrorBody, isStatusEventType, mirrorFieldsEqual, mirrorVisibility, visibilityEqual } from './mapping';
 import { MARKER_KEYS, readMarker, type MirrorKind, type MirrorMarker } from './markers';
 import type { SyncStats } from './log';
 import { isRetryableError } from './retry';
@@ -55,8 +55,14 @@ export class MirrorWriter {
       return this.insertWithFallback(targetCalendarId, source, marker, kind, label);
     }
 
+    // ソースが変わっていなくても、DEFAULT_VISIBILITY_EVENT_TYPES の変更で visibility がずれていれば直す
     const existingMarker = readMarker(existing);
-    if (existingMarker && existingMarker.srcUpdated === marker.srcUpdated && existingMarker.tag === marker.tag) {
+    if (
+      existingMarker &&
+      existingMarker.srcUpdated === marker.srcUpdated &&
+      existingMarker.tag === marker.tag &&
+      visibilityEqual(existing.visibility, mirrorVisibility(source, this.cfg))
+    ) {
       return existing;
     }
 

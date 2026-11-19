@@ -69,4 +69,26 @@ describe('loadConfig', () => {
     p.set(PROPERTY_KEYS.mirrorTitleSuffix, ' [copy]');
     expect(loadConfig(p, MAIN).mirrorTitleSuffix).toBe(' [copy]');
   });
+
+  it('DEFAULT_VISIBILITY_EVENT_TYPES は未設定・空なら空集合、区切りは ; と , と改行', () => {
+    const p = new MemoryProps();
+    p.set(PROPERTY_KEYS.subCalendarId, SUB);
+    const types = () => [...loadConfig(p, MAIN).defaultVisibilityEventTypes];
+    expect(types()).toEqual([]);
+    p.set(PROPERTY_KEYS.defaultVisibilityEventTypes, '');
+    expect(types()).toEqual([]);
+    p.set(PROPERTY_KEYS.defaultVisibilityEventTypes, ' outOfOffice ');
+    expect(types()).toEqual(['outOfOffice']);
+    p.set(PROPERTY_KEYS.defaultVisibilityEventTypes, 'outOfOffice;focusTime, default\n');
+    expect(types()).toEqual(['outOfOffice', 'focusTime', 'default']);
+  });
+
+  it('DEFAULT_VISIBILITY_EVENT_TYPES の知らない値は弾く', () => {
+    const p = new MemoryProps();
+    p.set(PROPERTY_KEYS.subCalendarId, SUB);
+    p.set(PROPERTY_KEYS.defaultVisibilityEventTypes, 'outofoffice');
+    expect(() => loadConfig(p, MAIN)).toThrow(/DEFAULT_VISIBILITY_EVENT_TYPES/);
+    p.set(PROPERTY_KEYS.defaultVisibilityEventTypes, 'workingLocation');
+    expect(() => loadConfig(p, MAIN)).toThrow(/workingLocation/);
+  });
 });

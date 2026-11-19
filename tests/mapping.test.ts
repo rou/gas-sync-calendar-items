@@ -80,7 +80,44 @@ describe('buildMirrorBody', () => {
   });
 });
 
+describe('buildMirrorBody: visibility', () => {
+  const ooo = timed(1, 10, '休暇', { eventType: 'outOfOffice' });
+  const oooAllDay = { summary: '休暇', eventType: 'outOfOffice' as const, start: { date: '2026-09-10' }, end: { date: '2026-09-11' } };
+  const focus = timed(1, 10, '集中', { eventType: 'focusTime' });
+  const plain = timed(1, 10, '打合せ');
+
+  it('既定（空）ではどの種別も private', () => {
+    for (const src of [plain, ooo, oooAllDay, focus]) {
+      expect(buildMirrorBody(src, marker, cfg, insertOpts).visibility).toBe('private');
+    }
+  });
+
+  it('outOfOffice を指定すると、本来の種別・退避・終日のどれでも default', () => {
+    const c = makeConfig({ defaultVisibilityEventTypes: new Set(['outOfOffice']) });
+    expect(buildMirrorBody(ooo, marker, c, insertOpts).visibility).toBe('default');
+    const fallback = buildMirrorBody(ooo, marker, c, { ...insertOpts, nativeStatusType: false });
+    expect(fallback.eventType).toBe('default');
+    expect(fallback.visibility).toBe('default');
+    expect(buildMirrorBody(oooAllDay, marker, c, insertOpts).visibility).toBe('default');
+    expect(buildMirrorBody(focus, marker, c, insertOpts).visibility).toBe('private');
+    expect(buildMirrorBody(plain, marker, c, insertOpts).visibility).toBe('private');
+  });
+
+  it('default を指定すると eventType 未設定の通常予定も default', () => {
+    const c = makeConfig({ defaultVisibilityEventTypes: new Set(['default', 'focusTime']) });
+    expect(buildMirrorBody(plain, marker, c, insertOpts).visibility).toBe('default');
+    expect(buildMirrorBody(focus, marker, c, insertOpts).visibility).toBe('default');
+    expect(buildMirrorBody(ooo, marker, c, insertOpts).visibility).toBe('private');
+  });
+});
+
 describe('mirrorFieldsEqual', () => {
+  it('visibility の差を検出し、未設定は default とみなす', () => {
+    const a = timed(1, 10, 'x', { visibility: 'private' });
+    expect(mirrorFieldsEqual(a, { ...a, visibility: 'default' })).toBe(false);
+    expect(mirrorFieldsEqual({ ...a, visibility: undefined }, { ...a, visibility: 'default' })).toBe(true);
+  });
+
   it('同じ時刻を別表記で持っていても等しい', () => {
     const a = timed(1, 10, 'x');
     const b = { ...a, start: { dateTime: '2026-09-05T19:00:00+09:00' }, end: { dateTime: '2026-09-05T20:00:00+09:00' } };

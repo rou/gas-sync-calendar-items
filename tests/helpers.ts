@@ -17,6 +17,7 @@ export function makeConfig(overrides: Partial<Config> = {}): Config {
     fallbackPrefixOoo: DEFAULTS.fallbackPrefixOoo,
     fallbackPrefixFocus: DEFAULTS.fallbackPrefixFocus,
     appendSourceLinks: true,
+    defaultVisibilityEventTypes: new Set(),
     dryRun: false,
     notifyEmail: MAIN,
     ...overrides,

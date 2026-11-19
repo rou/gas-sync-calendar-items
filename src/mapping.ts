@@ -32,8 +32,30 @@ export interface MirrorBodyOptions {
 
 type MappingConfig = Pick<
   Config,
-  'mirrorTitleSuffix' | 'fallbackPrefixOoo' | 'fallbackPrefixFocus' | 'appendSourceLinks'
+  | 'mirrorTitleSuffix'
+  | 'fallbackPrefixOoo'
+  | 'fallbackPrefixFocus'
+  | 'appendSourceLinks'
+  | 'defaultVisibilityEventTypes'
 >;
+
+export type MirrorVisibility = 'default' | 'private';
+
+/**
+ * ミラーの visibility。ミラー側の種別ではなくソースの eventType で決める。
+ * 本来の種別で作れたか退避したか、終日かどうか、どちら向きの同期かで結果が変わらないようにするため。
+ */
+export function mirrorVisibility(
+  source: CalEvent,
+  cfg: Pick<Config, 'defaultVisibilityEventTypes'>,
+): MirrorVisibility {
+  return cfg.defaultVisibilityEventTypes.has(source.eventType ?? 'default') ? 'default' : 'private';
+}
+
+/** API は visibility が default のとき値を省略して返すので、未設定を default とみなして比べる。 */
+export function visibilityEqual(a: string | undefined, b: string | undefined): boolean {
+  return (a ?? 'default') === (b ?? 'default');
+}
 
 /**
  * ソース予定からミラーの本文を組み立てる（spec §10）。
@@ -66,7 +88,7 @@ export function buildMirrorBody(
     // status event は opaque が必須。退避したときも時間を埋める意図なので opaque にする
     transparency: statusType !== null ? 'opaque' : source.transparency,
     colorId: source.colorId,
-    visibility: 'private',
+    visibility: mirrorVisibility(source, cfg),
     reminders: { useDefault: true },
     status: 'confirmed',
     extendedProperties: { private: buildMarkerProps(marker) },
@@ -124,6 +146,7 @@ export function mirrorFieldsEqual(a: CalEvent, b: CalEvent): boolean {
     dateKey(a.end) === dateKey(b.end) &&
     (a.transparency ?? 'opaque') === (b.transparency ?? 'opaque') &&
     (a.colorId ?? '') === (b.colorId ?? '') &&
+    visibilityEqual(a.visibility, b.visibility) &&
     (a.status ?? 'confirmed') === (b.status ?? 'confirmed')
   );
 }
